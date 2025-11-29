@@ -57,13 +57,29 @@ def get_token(url, appid, secret, username, password, orgId=None):
         else:
             payload = json.dumps({"appSecret": secret, "email": username, "password": passhash})
         headers = {"Content-Type": "application/json"}
-        url = f"//account/v1.0/token?appId={appid}&language=en"
+        url = f"/account/v1.0/token?appId={appid}&language=en"
         conn.request("POST", url, payload, headers)
         res = conn.getresponse()
         data = json.loads(res.read())
-        print(f"{time_stamp()}: 🔥 Token received successfully")
-        #print(data)
-        return data["access_token"]
+        print(f"{time_stamp()}: 🔥 Token response received")
+        print(f"{time_stamp()}: 🔍 API Response: {json.dumps(data, indent=2)}")
+        
+        # Check if authentication was successful
+        if "success" in data and data["success"] == False:
+            print(f"{time_stamp()}: ❌ Authentication failed!")
+            print(f"{time_stamp()}: 📋 Error Code: {data.get('code', 'unknown')}")
+            print(f"{time_stamp()}: 📋 Error Message: {data.get('msg', 'unknown')}")
+            print(f"{time_stamp()}: 💡 Please check your credentials in config.json (username, password, appid, secret, orgId)")
+            return None
+        
+        # Extract access token
+        if "access_token" in data and data["access_token"] is not None:
+            return data["access_token"]
+        elif "data" in data and isinstance(data["data"], dict) and "access_token" in data["data"]:
+            return data["data"]["access_token"]
+        else:
+            print(f"{time_stamp()}: 😡 Token not found in response. Available keys: {list(data.keys())}")
+            return None
     except Exception as error:  # pylint: disable=broad-except
         print(f"{time_stamp()}: 😡 Unable to fetch token: {str(error)}")
         return None
@@ -79,7 +95,7 @@ def get_station_realtime(url, stationid, token):
         conn = http.client.HTTPSConnection(url)
         payload = json.dumps({"stationId": stationid})
         headers = {"Content-Type": "application/json", "Authorization": "bearer " + token}
-        conn.request("POST", "//station/v1.0/realTime?language=en", payload, headers)
+        conn.request("POST", "/station/v1.0/realTime?language=en", payload, headers)
         res = conn.getresponse()
         data = json.loads(res.read())
         print(f"{time_stamp()}: 🔥 Station realtime data received successfully")
@@ -99,7 +115,7 @@ def get_device_current_data(url, device_sn, token):
         conn = http.client.HTTPSConnection(url)
         payload = json.dumps({"deviceSn": device_sn})
         headers = {"Content-Type": "application/json", "Authorization": "bearer " + token}
-        conn.request("POST", "//device/v1.0/currentData?language=en", payload, headers)
+        conn.request("POST", "/device/v1.0/currentData?language=en", payload, headers)
         res = conn.getresponse()
         data = json.loads(res.read())
         print(f"{time_stamp()}: 🔥 Device data received successfully")
